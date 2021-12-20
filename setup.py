@@ -8,7 +8,7 @@ with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
 VERSION = '1.0.0'
-DESCRIPTION = 'Library for rich multithreading.'
+DESCRIPTION = 'Library for easy multithreading.'
 
 setup(
     name = "rethread",
@@ -20,5 +20,5 @@ setup(
     long_description = long_description,
     license = 'MIT',
     maintainer = 'ZeroIntensity',
-    packages = ['rethread']
+    packages = ['rethread'],
 )
