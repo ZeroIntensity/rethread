@@ -1,10 +1,20 @@
-from threading import Thread, currentThread
-from typing import Callable, Any
-import inspect
-from types import FrameType
+from threading import Thread
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+from functools import wraps
 
-class RunningThread:
-    def __init__(self, func: Callable, *args, **kwargs) -> None:
+__all__ = (
+    "RunningThread",
+    "thread",
+    "auto"
+)
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+class RunningThread(Generic[P, T]):
+    """Class representing a running thread."""
+    def __init__(self, func: Callable[P, T], *args, **kwargs) -> None:
         self._thread = Thread(target = handler, args = [self, func, args, kwargs])
         self._func = func
         self._value = None
@@ -18,19 +28,20 @@ class RunningThread:
         return self._thread
     
     @property
-    def func(self) -> Callable:
+    def func(self) -> Callable[P, T]:
         """Function the thread is running."""
         return self._func
     
     @property
-    def value(self) -> Any:
+    def value(self) -> T:
         """Return value of the thread."""
-        if not self.value_set:
-            raise RuntimeError("thread is not finished, perhaps you forgot to call RunningThread.wait()?")
+        if not self._value:
+            raise RuntimeError("thread is not finished, perhaps you forgot to call wait()?")
+
         return self._value
     
     @value.setter
-    def value(self, value: Any) -> None:
+    def value(self, value: T) -> None:
         if self.value_set:
             raise RuntimeError("value for thread is already set.")
         else:
@@ -60,15 +71,21 @@ class RunningThread:
     def __enter__(self):
         return self
     
-    def __exit__(self, *args, **kwargs):
+    def __exit__(self, *_, **__):
         self.wait()
 
-def handler(instance: RunningThread, func: Callable, args: tuple, kwargs: dict):
-    resp: Any = func(*args, **kwargs)
+def handler(instance: RunningThread[P, T], func: Callable[P, T], args: tuple, kwargs: dict):
+    resp: T = func(*args, **kwargs)
     
     instance.done = True
     instance.value = resp
 
-def thread(func: Callable, *args, **kwargs) -> RunningThread:
+def thread(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> RunningThread[P, T]:
     """Function for generating a new running thread."""
     return RunningThread(func, *args, **kwargs)
+
+def auto(func: Callable[P, T]) -> Callable[P, RunningThread[P, T]]:
+    @wraps(func)
+    def inner(*args: P.args, **kwargs: P.kwargs) -> RunningThread[P, T]:
+        return thread(func, *args, **kwargs)
+    return inner
